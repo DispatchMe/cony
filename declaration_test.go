@@ -10,6 +10,7 @@ type testDeclarer struct {
 	_QueueDeclare    func(string) (amqp.Queue, error)
 	_ExchangeDeclare func() error
 	_QueueBind       func() error
+	_ExchangeBind    func() error
 }
 
 func (td *testDeclarer) QueueDeclare(name string, durable, autoDelete,
@@ -25,6 +26,11 @@ func (td *testDeclarer) ExchangeDeclare(name, kind string, durable, autoDelete,
 func (td *testDeclarer) QueueBind(name, key, exchange string, noWait bool,
 	args amqp.Table) error {
 	return td._QueueBind()
+}
+
+func (td *testDeclarer) ExchangeBind(destination, key, source string, noWait bool,
+	args amqp.Table) error {
+	return td._ExchangeBind()
 }
 
 func TestDeclareQueue(t *testing.T) {
@@ -83,13 +89,13 @@ func TestDeclareExchange(t *testing.T) {
 	}
 }
 
-func TestDeclareBinding(t *testing.T) {
+func TestDeclareQueueBinding(t *testing.T) {
 	var ok bool
 
-	b := Binding{
+	b := QueueBinding{
 		Queue:    &Queue{Name: "lol1"},
 		Exchange: Exchange{Name: "lol2"},
-		Key:      "ololoev",
+		Keys:     []string{"ololoev"},
 	}
 
 	td := &testDeclarer{
@@ -99,7 +105,7 @@ func TestDeclareBinding(t *testing.T) {
 		},
 	}
 
-	DeclareBinding(b)(td)
+	DeclareQueueBinding(b)(td)
 
 	if !ok {
 		t.Error("DeclareBinding() should call declarer.QueueBind()")

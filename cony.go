@@ -30,11 +30,19 @@ type Exchange struct {
 }
 
 // Binding used to declare binding between AMQP Queue and AMQP Exchange
-type Binding struct {
+type QueueBinding struct {
 	Queue    *Queue
 	Exchange Exchange
-	Key      string
+	Keys     []string
 	Args     amqp.Table
+}
+
+// Used to declare binding from one AMQP Exchange to another
+type ExchangeBinding struct {
+	SourceExchange      Exchange
+	DestinationExchange Exchange
+	Keys                []string
+	Args                amqp.Table
 }
 
 type mqDeleter interface {

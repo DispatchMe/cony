@@ -67,6 +67,13 @@ func (c *Consumer) serve(client mqDeleter, ch mqChannel) {
 		return
 	}
 
+	// If prefetch > 1, c.deliveries might have messages in it
+	// that are associated with a closed RabbitMQ channel (if e.g.
+	// there was a reconnection event). Rabbit will already deliver
+	// those messages to a new channel so we need to remove
+	// references to them here.
+	c.deliveries = make(chan amqp.Delivery)
+
 	deliveries, err2 := ch.Consume(c.q.Name,
 		c.tag,       // consumer tag
 		c.autoAck,   // autoAck,

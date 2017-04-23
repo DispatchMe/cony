@@ -2,11 +2,10 @@ package cony
 
 import (
 	"errors"
+	"github.com/streadway/amqp"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/streadway/amqp"
 )
 
 const (
@@ -41,15 +40,19 @@ type Client struct {
 
 // Declare used to declare queues/exchanges/bindings.
 // Declaration is saved and will be re-run every time Client gets connection
-func (c *Client) Declare(d []Declaration) {
+func (c *Client) Declare(d []Declaration) error {
 	c.l.Lock()
 	defer c.l.Unlock()
 	c.declarations = append(c.declarations, d...)
 	if ch, err := c.channel(); err == nil {
 		for _, declare := range d {
-			declare(ch)
+			err = declare(ch)
+			if err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 // Consume used to declare consumers
@@ -121,6 +124,8 @@ func (c *Client) Loop() bool {
 
 	conn, _ := c.conn.Load().(*amqp.Connection)
 
+	// conn is set to nil in the below "guard connection"
+	// go routine
 	if conn != nil {
 		return true
 	}
@@ -186,6 +191,8 @@ func (c *Client) Loop() bool {
 		ch1, err := c.channel()
 		if err == nil {
 			go cons.serve(c, ch1)
+		} else {
+			c.reportErr(err)
 		}
 	}
 
@@ -193,6 +200,8 @@ func (c *Client) Loop() bool {
 		ch1, err := c.channel()
 		if err == nil {
 			go pub.serve(c, ch1)
+		} else {
+			c.reportErr(err)
 		}
 	}
 

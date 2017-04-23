@@ -10,6 +10,7 @@ type Declarer interface {
 	QueueDeclare(name string, durable, autoDelete, exclusive, noWait bool, args amqp.Table) (amqp.Queue, error)
 	ExchangeDeclare(name, kind string, durable, autoDelete, internal, noWait bool, args amqp.Table) error
 	QueueBind(name, key, exchange string, noWait bool, args amqp.Table) error
+	ExchangeBind(destination, key, source string, noWait bool, args amqp.Table) error
 }
 
 // DeclareQueue is a way to declare AMQP queue
@@ -45,14 +46,37 @@ func DeclareExchange(e Exchange) Declaration {
 	}
 }
 
-// DeclareBinding is a way to declare AMQP binding between AMQP queue and exchange
-func DeclareBinding(b Binding) Declaration {
+// DeclareQueueBinding is a way to declare AMQP binding between AMQP queue and exchange
+func DeclareQueueBinding(b QueueBinding) Declaration {
 	return func(c Declarer) error {
-		return c.QueueBind(b.Queue.Name,
-			b.Key,
-			b.Exchange.Name,
-			false,
-			b.Args,
-		)
+		var err error
+
+		if b.Keys == nil {
+			return c.QueueBind(b.Queue.Name, "#.#", b.Exchange.Name, false, b.Args)
+		}
+
+		for _, key := range b.Keys {
+			err = c.QueueBind(b.Queue.Name, key, b.Exchange.Name, false, b.Args)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func DeclareExchangeBinding(b ExchangeBinding) Declaration {
+	return func(c Declarer) error {
+		var err error
+		if b.Keys == nil {
+			return c.ExchangeBind(b.DestinationExchange.Name, "#.#", b.SourceExchange.Name, false, b.Args)
+		}
+		for _, key := range b.Keys {
+			err = c.ExchangeBind(b.DestinationExchange.Name, key, b.SourceExchange.Name, false, b.Args)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 }
