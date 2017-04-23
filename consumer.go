@@ -45,6 +45,7 @@ func (c *Consumer) Cancel() {
 	defer c.m.Unlock()
 
 	if !c.dead {
+		c.stop <- struct{}{}
 		close(c.deliveries)
 		close(c.stop)
 		c.dead = true
